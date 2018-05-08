@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
 import requests
+import gpxpy.gpx
 from random import uniform
 
 # Sides of the square bounding box, in degrees
-size = 0.005
+size = 0.01
 
 # Set this to False if you want to get areas without content
 # This will mostly be empty ocean.
@@ -14,17 +15,32 @@ verify_exists = True
 timeout = 200
 
 
-class SizeError(Exception):
-    """Raised when a request returns a weird file size."""
+class UnknownError(Exception):
     pass
 
 
+def trunc(num, digits=5):
+    """Truncates a float 'num' to 'digits' number of trailing significant digits.
+    trunc(57.136658951830555, 4) -> 47.1366"""
+    s = str(num)
+    l = s.split('.')
+    a = l[0]
+    b = l[1]
+    del l
+    c = b[:digits]
+    d = a + '.' + c
+    if str(d) in s:
+        return float(d)
+    else:
+        raise UnknownError
+
+
 def rand_lat():
-    return uniform(-90, 90)
+    return trunc(uniform(-90, 90))
 
 
 def rand_lon():
-    return uniform(-180, 180)
+    return trunc(uniform(-180, 180))
 
 
 def get_box(lat0, lon0, inc):
@@ -33,7 +49,14 @@ def get_box(lat0, lon0, inc):
     return "{0}, {1}, {2}, {3}".format(lat0, lon0, lat1, lon1)
 
 
-def main():
+def make_gpx(lat0, lon0, lat1, lon1):
+    """Returns an XML GPX object, a rectangle with
+    corners of (lat0, lon0) and (lat1, lon1)."""
+    gpx = gpxpy.gpx.GPX()
+
+
+def do():
+    """Picks a random coordinate on the map,"""
     searching = True
     outfile = ""
 
@@ -59,7 +82,7 @@ def main():
                 continue
             elif len(response.content) < blank:
                 # Response has less content than a blank document; something's wrong
-                raise SizeError
+                raise UnknownError
             elif len(response.content) > blank:
                 # Response has content
                 searching = False
@@ -68,9 +91,17 @@ def main():
 
     # Loop is exited; must have found a good area
 
+    print(box)
     with open(outfile, "wb+") as f:
         print("Writing to {0}".format(outfile))
         f.write(response.content)
+
+
+def main():
+    i = 5
+    while i:
+        do()
+        i += -1
 
 
 if __name__ == "__main__":
